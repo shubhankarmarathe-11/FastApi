@@ -12,6 +12,7 @@ dependencies = [
     "fastapi[standard]>=0.141.1",
     "phonenumbers>=9.0.37",
     "pymysql>=1.2.0",
+    "redis>=8.1.0",
     "sqlmodel>=0.0.39",
 ]
 

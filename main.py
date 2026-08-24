@@ -4,13 +4,13 @@ from Routes import emailRoute
 from fastapi.middleware.cors import CORSMiddleware
 from Config.dbConnection import engine
 from sqlmodel import SQLModel
+from Config.redisConnection import redisConnect
 
 app = FastAPI()
 
-
 app.add_middleware(CORSMiddleware,allow_origins="*",allow_methods=["GET","POST","PUT","DELETE"],allow_credentials=True,allow_headers="*")
 
-SQLModel.metadata.create_all(engine);
+SQLModel.metadata.create_all(engine)
 
 @app.get("/")
 def read_root():

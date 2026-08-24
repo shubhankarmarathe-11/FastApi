@@ -1,8 +1,7 @@
 from fastapi import APIRouter,HTTPException
 from pydantic import BaseModel,EmailStr,Field
 from pydantic_extra_types.phone_numbers import PhoneNumber
-
-
+from Services.AuthServices import InsertUser,GetUserDetails
 authroute = APIRouter()
 
 class SignCred(BaseModel):
@@ -20,11 +19,24 @@ class LoginCred(BaseModel):
 @authroute.post("/api/auth/signup")
 async def SignupRoute(Cred:SignCred):
 
-    if Cred.username == "shubhankar":
-        raise HTTPException(status_code=401,detail="please use different username")
+    result = await InsertUser(Cred)
+    if result == "Duplicate entry":
+        raise HTTPException(status_code=400,detail="User already exists")
 
-    return Cred
+    raise HTTPException(status_code=201,detail="User created successfully")
 
 @authroute.post("/api/auth/login")
 async def LoginRoute(Cred:LoginCred):
-    return Cred
+
+    result = await GetUserDetails(Cred)
+
+    if result == "Database Error":
+        raise HTTPException(status_code=500,detail="Internal server error")
+    elif result == "User not found":
+        raise HTTPException(status_code=404,detail="user not found")
+    elif result == "Incorrect Password":
+        raise HTTPException(status_code=401,detail="Incorrect Password")
+    else:
+        raise HTTPException(status_code=200,detail="correct credentials")
+
+
