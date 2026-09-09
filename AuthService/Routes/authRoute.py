@@ -1,7 +1,8 @@
-from fastapi import APIRouter,HTTPException
+from fastapi import APIRouter,HTTPException, Response
 from pydantic import BaseModel,EmailStr,Field
 from pydantic_extra_types.phone_numbers import PhoneNumber
 from Services.AuthServices import InsertUser,GetUserDetails
+
 authroute = APIRouter()
 
 class SignCred(BaseModel):
@@ -17,11 +18,13 @@ class LoginCred(BaseModel):
 
 
 @authroute.post("/api/auth/signup")
-async def SignupRoute(Cred:SignCred):
+async def SignupRoute(Cred:SignCred,res: Response):
 
     result = await InsertUser(Cred)
     if result == "Duplicate entry":
         raise HTTPException(status_code=400,detail="User already exists")
+
+# key: str, value, max_age, expires, path, domain, secure, httponly, samesite, partitioned
 
     raise HTTPException(status_code=201,detail="User created successfully")
 

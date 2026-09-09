@@ -8,9 +8,11 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "bcrypt>=5.0.0",
     "emails>=1.1.2",
     "fastapi[standard]>=0.141.1",
     "phonenumbers>=9.0.37",
+    "pyjwt>=2.13.0",
     "pymysql>=1.2.0",
     "redis>=8.1.0",
     "sqlmodel>=0.0.39",

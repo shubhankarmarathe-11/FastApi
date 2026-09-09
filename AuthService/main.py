@@ -4,7 +4,6 @@ from Routes import emailRoute
 from fastapi.middleware.cors import CORSMiddleware
 from Config.dbConnection import engine
 from sqlmodel import SQLModel
-from Config.redisConnection import redisConnect
 
 app = FastAPI()
 
@@ -19,4 +18,3 @@ def read_root():
 
 app.include_router(authRoute.authroute)
 app.include_router(emailRoute.emailRouter)
-
