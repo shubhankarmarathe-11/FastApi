@@ -1,7 +1,7 @@
 import bcrypt
 from pydantic import BaseModel,EmailStr,Field
 from pydantic_extra_types.phone_numbers import PhoneNumber
-from Config.dbConnection import engine, UserDetails
+from Config.dbConnection import engine, empDetails
 from sqlmodel import Session,select
 from datetime import datetime
 from bcrypt import gensalt
@@ -11,6 +11,8 @@ class SignCred(BaseModel):
     email: EmailStr
     number: PhoneNumber
     password: str = Field(min_length=8,max_length=16)
+    startingDate: datetime = Field(default=datetime.now())
+    payrollDate: datetime = Field(default=datetime.now())
 
 class LoginCred(BaseModel):
     email: EmailStr
@@ -20,7 +22,7 @@ async def InsertUser(User:SignCred):
 
     password_bytes = User.password.encode('utf-8')
     hashed_password = bcrypt.hashpw(password_bytes,gensalt())
-    Insert = UserDetails(username=User.username,email=User.email,password=hashed_password,createdAt=datetime.now(),number=User.number)
+    Insert = empDetails(name=User.username,email=User.email,password=hashed_password,createdAt=datetime.now(),number=User.number,startingDate=User.startingDate,payrollDate=User.payrollDate)
 
     try:
         with Session(engine) as session:
@@ -37,7 +39,7 @@ async def InsertUser(User:SignCred):
 async def GetUserDetails(User:LoginCred):
     try:
         with Session(engine) as session:
-            result = session.query(UserDetails).filter(UserDetails.email == User.email).first()
+            result = session.query(empDetails).filter(empDetails.email == User.email).first()
             if(result == None):
                 return "User not found"
             password_bytes = User.password.encode('utf-8')
@@ -45,7 +47,7 @@ async def GetUserDetails(User:LoginCred):
             is_correct = bcrypt.checkpw(password_bytes, actual_password)
             if(is_correct==False):
                 return "Incorrect Password"
-        return "Correct Credentials"
+        return {"userid":str(result.id),"message":"Correct Credentials"}
     except Exception as e:
         print(f"error - {e}")
         return "Database Error"
@@ -56,7 +58,7 @@ async def UpdateUser(User:SignCred):
         hashed_password = bcrypt.hashpw(password_bytes, gensalt())
 
         with Session(engine) as session:
-            statement = select(UserDetails).where(UserDetails.email == User.email)
+            statement = select(empDetails).where(empDetails.email == User.email)
             result = session.execute(statement)
             got_one = result.one()
 
@@ -75,7 +77,7 @@ async def UpdateUser(User:SignCred):
 async def DeleteUser(UserId:str):
     try:
         with Session(engine) as session:
-            statement = select(UserDetails).where(str(UserDetails.id) == UserId)
+            statement = select(empDetails).where(str(empDetails.id) == UserId)
             result = session.execute(statement)
             got_one = result.one()
             session.delete(got_one)

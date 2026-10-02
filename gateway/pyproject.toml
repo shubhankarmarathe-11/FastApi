@@ -8,7 +8,9 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi>=0.141.1",
+    "fastapi[standard]>=0.141.1",
+    "httpx>=0.28.1",
+    "phonenumbers>=9.0.38",
     "pyjwt>=2.13.0",
     "redis>=8.1.0",
 ]

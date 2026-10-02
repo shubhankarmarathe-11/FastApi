@@ -2,7 +2,7 @@ from fastapi import APIRouter,HTTPException, Response
 from pydantic import BaseModel,EmailStr,Field
 from pydantic_extra_types.phone_numbers import PhoneNumber
 from Services.AuthServices import InsertUser,GetUserDetails
-
+from datetime import datetime
 authroute = APIRouter()
 
 class SignCred(BaseModel):
@@ -10,6 +10,8 @@ class SignCred(BaseModel):
     email: EmailStr
     number: PhoneNumber
     password: str = Field(min_length=8,max_length=16)
+    startingDate: datetime = Field(default=datetime.now())
+    payrollDate: datetime = Field(default=datetime.now())
 
 class LoginCred(BaseModel):
     email: EmailStr
@@ -40,6 +42,6 @@ async def LoginRoute(Cred:LoginCred):
     elif result == "Incorrect Password":
         raise HTTPException(status_code=401,detail="Incorrect Password")
     else:
-        raise HTTPException(status_code=200,detail="correct credentials")
+        raise HTTPException(status_code=200,detail=result)
 
 
