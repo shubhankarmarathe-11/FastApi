@@ -1,7 +1,7 @@
 import bcrypt
 from pydantic import BaseModel,EmailStr,Field
 from pydantic_extra_types.phone_numbers import PhoneNumber
-from Config.dbConnection import engine, empDetails
+from Config.dbConnection import engine, ClientDetails
 from sqlmodel import Session,select
 from datetime import datetime
 from bcrypt import gensalt
@@ -9,10 +9,9 @@ from bcrypt import gensalt
 class SignCred(BaseModel):
     username: str
     email: EmailStr
-    number: PhoneNumber
     password: str = Field(min_length=8,max_length=16)
-    startingDate: datetime = Field(default=datetime.now())
-    payrollDate: datetime = Field(default=datetime.now())
+    sub: str = Field(default="")
+    picture: str = Field(default="")
 
 class LoginCred(BaseModel):
     email: EmailStr
@@ -22,24 +21,27 @@ async def InsertUser(User:SignCred):
 
     password_bytes = User.password.encode('utf-8')
     hashed_password = bcrypt.hashpw(password_bytes,gensalt())
-    Insert = empDetails(name=User.username,email=User.email,password=hashed_password,createdAt=datetime.now(),number=User.number,startingDate=User.startingDate,payrollDate=User.payrollDate)
-
+    Insert = ClientDetails(username=User.username,email=User.email,password=hashed_password,createdAt=datetime.now())
+    userid = str(Insert.id)
     try:
         with Session(engine) as session:
             session.add(Insert)
             session.commit()
             session.close()
-        return "Data Inserted"
+
+        return {"userid":userid,"message":"Data Inserted"}
     except Exception as e:
         print(f"error - {e}")
         if "Duplicate entry" in str(e):
             return "Duplicate entry"
+        else:
+            return "Database Error"
 
 
 async def GetUserDetails(User:LoginCred):
     try:
         with Session(engine) as session:
-            result = session.query(empDetails).filter(empDetails.email == User.email).first()
+            result = session.query(ClientDetails).filter(ClientDetails.email == User.email).first()
             if(result == None):
                 return "User not found"
             password_bytes = User.password.encode('utf-8')
@@ -58,7 +60,7 @@ async def UpdateUser(User:SignCred):
         hashed_password = bcrypt.hashpw(password_bytes, gensalt())
 
         with Session(engine) as session:
-            statement = select(empDetails).where(empDetails.email == User.email)
+            statement = select(ClientDetails).where(ClientDetails.email == User.email)
             result = session.execute(statement)
             got_one = result.one()
 
@@ -77,7 +79,7 @@ async def UpdateUser(User:SignCred):
 async def DeleteUser(UserId:str):
     try:
         with Session(engine) as session:
-            statement = select(empDetails).where(str(empDetails.id) == UserId)
+            statement = select(ClientDetails).where(str(ClientDetails.id) == UserId)
             result = session.execute(statement)
             got_one = result.one()
             session.delete(got_one)
@@ -85,3 +87,5 @@ async def DeleteUser(UserId:str):
     except Exception as e:
         print(f"error - {e}")
         return "Database Error"
+
+    

@@ -8,10 +8,9 @@ authroute = APIRouter()
 class SignCred(BaseModel):
     username: str
     email: EmailStr
-    number: PhoneNumber
     password: str = Field(min_length=8,max_length=16)
-    startingDate: datetime = Field(default=datetime.now())
-    payrollDate: datetime = Field(default=datetime.now())
+    sub: str = Field(default="")
+    picture: str = Field(default="")
 
 class LoginCred(BaseModel):
     email: EmailStr
@@ -26,9 +25,11 @@ async def SignupRoute(Cred:SignCred,res: Response):
     if result == "Duplicate entry":
         raise HTTPException(status_code=400,detail="User already exists")
 
-# key: str, value, max_age, expires, path, domain, secure, httponly, samesite, partitioned
-
-    raise HTTPException(status_code=201,detail="User created successfully")
+    elif result == "Database Error":
+        raise HTTPException(status_code=500,detail="Internal server error")        
+    
+    else:
+        raise HTTPException(status_code=201,detail=result)
 
 @authroute.post("/api/auth/login")
 async def LoginRoute(Cred:LoginCred):

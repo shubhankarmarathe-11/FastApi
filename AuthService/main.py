@@ -1,6 +1,5 @@
 from fastapi import FastAPI, Request, Depends
 from Routes import authRoute
-from Routes import emailRoute
 from fastapi.middleware.cors import CORSMiddleware
 from Config.dbConnection import engine
 from sqlmodel import SQLModel
@@ -17,4 +16,3 @@ def read_root():
 
 
 app.include_router(authRoute.authroute)
-app.include_router(emailRoute.emailRouter)
