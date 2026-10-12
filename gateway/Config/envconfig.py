@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     # Declare the variables and their expected types
     secret_key: str
     authurl: str
+    shorturl:str
     # Instruct Pydantic to read from the .env file
     model_config = SettingsConfigDict(env_file=".env")
 

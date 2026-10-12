@@ -3,7 +3,7 @@ from starlette import status
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
 from pydantic import BaseModel,EmailStr
-from Routes import router,authroute
+from Routes import router,authroute,shortnerRouter
 from sqlmodel import SQLModel
 from Config.databaseConnection import engine
 
@@ -36,3 +36,4 @@ async def emailService(emailCred:EmailCred):
 
 app.include_router(router.router)
 app.include_router(authroute.authrouter)
+app.include_router(shortnerRouter.shortner)

@@ -1,4 +1,5 @@
-from fastapi import APIRouter,Depends,Response,Request
+from fastapi import APIRouter,Depends,Response,Request,HTTPException
+from fastapi.responses import JSONResponse
 from Config.envconfig import get_settings,Settings
 from pydantic import BaseModel,Field,EmailStr
 import httpx
@@ -34,7 +35,7 @@ async def LoginRoute(res:Response,userCred:UserCred,env:Settings = Depends(get_s
         response = await client.post(f"{url}/login",json={"email":userCred.email,"password":userCred.password})
     
         if(response.status_code == status.HTTP_200_OK):
-    
+
             exp_time = datetime.now(timezone.utc) + timedelta(seconds=120)
             accessData = dict(exp=int(exp_time.timestamp())+120,userid=response.json()['detail']['userid'],role="customer",type="access")
             refreshData = dict(exp=int(exp_time.timestamp())+30000,userid=response.json()['detail']['userid'],role="customer",type="refresh")
@@ -42,12 +43,23 @@ async def LoginRoute(res:Response,userCred:UserCred,env:Settings = Depends(get_s
             json.dumps(refreshData)
             accesstoken = await EncodeToken(Data=accessData,env=env)
             refreshtoken = await EncodeToken(Data=refreshData,env=env)
-            res.set_cookie(key="AccessToken",value=str(accesstoken),httponly=True,expires=str(datetime.now() + timedelta(minutes=2)))
-            res.set_cookie(key="RefreshToken",value=str(refreshtoken),httponly=True,expires=str(datetime.now() + timedelta(minutes=500)))
-            AddRateLimmiter(response.json()['detail']['userid'])
-    
-        return response.json()['detail']['message']
 
+            jsonResponse = JSONResponse(
+                status_code=response.status_code,
+                content=response.json()['detail']['message']
+            )
+
+            jsonResponse.set_cookie(key="AccessToken",value=str(accesstoken),httponly=True,expires=str(datetime.now() + timedelta(minutes=2)))
+            jsonResponse.set_cookie(key="RefreshToken",value=str(refreshtoken),httponly=True,expires=str(datetime.now() + timedelta(minutes=500)))
+            AddRateLimmiter(response.json()['detail']['userid'])
+
+            return jsonResponse
+        
+        return JSONResponse(
+            status_code=response.status_code,
+            content=response.json()['detail']['message']
+        )
+        
 
 @authrouter.post("/signup")
 async def SignupRoute(res:Response,userCred:UserCred,env:Settings = Depends(get_settings)):
@@ -57,7 +69,6 @@ async def SignupRoute(res:Response,userCred:UserCred,env:Settings = Depends(get_
         response = await client.post(f"{url}/signup",json={"username":userCred.username,"email": userCred.email, "password": userCred.password, "sub": userCred.sub,"picture": userCred.picture})
         
         if(response.status_code == status.HTTP_201_CREATED):
-        
             exp_time = datetime.now(timezone.utc) + timedelta(seconds=120)
             accessData = dict(exp=int(exp_time.timestamp())+120,userid=response.json()['detail']['userid'],role="customer",type="access")
             refreshData = dict(exp=int(exp_time.timestamp())+30000,userid=response.json()['detail']['userid'],role="customer",type="refresh")
@@ -65,11 +76,21 @@ async def SignupRoute(res:Response,userCred:UserCred,env:Settings = Depends(get_
             json.dumps(refreshData)
             accesstoken = await EncodeToken(Data=accessData,env=env)
             refreshtoken = await EncodeToken(Data=refreshData,env=env)
-            res.set_cookie(key="AccessToken",value=str(accesstoken),httponly=True,expires=str(datetime.now() + timedelta(minutes=2)))
-            res.set_cookie(key="RefreshToken",value=str(refreshtoken),httponly=True,expires=str(datetime.now() + timedelta(minutes=500)))
+
+            jsonResponse = JSONResponse(
+                status_code=response.status_code,
+                content=response.json()['detail']['message']
+            )
+
+            jsonResponse.set_cookie(key="AccessToken",value=str(accesstoken),httponly=True,expires=str(datetime.now() + timedelta(minutes=2)))
+            jsonResponse.set_cookie(key="RefreshToken",value=str(refreshtoken),httponly=True,expires=str(datetime.now() + timedelta(minutes=500)))
             AddRateLimmiter(response.json()['detail']['userid'])
             
-        return response.json()
+            return jsonResponse
+        return JSONResponse(
+            status_code=response.status_code,
+            content=response.json()['detail']['message']
+        )
 
 
 

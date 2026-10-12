@@ -7,33 +7,46 @@ from Services.Ratelimitter import UpdateRateLimmiter
 from Config.databaseConnection import engine,BlackListTokens
 from sqlmodel import Session
 from Config.redisConnection import redisConnect
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse,JSONResponse
 from datetime import timezone,timedelta,datetime
 import json
 
+userId = ""
 
 async def Authenticatetoken(request: Request,response:Response):
 
-    val = redisConnect.get(str(request.cookies["AccessToken"]))
-    print(type(val))
+    isRefreshTokenAvailable = request.cookies.get("RefreshToken")
+    print("avail",isRefreshTokenAvailable)
+
+    if isRefreshTokenAvailable == None:
+        response.delete_cookie("AccessToken")
+        response.delete_cookie("RefreshToken")
+
+        res = RedirectResponse(url="/login")
+        return res
+    
+    val = redisConnect.get(str(request.cookies.get("AccessToken")))
+    print("val - ",val)
     if val == 'expired'.encode():
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail="Invalid Token Please login back ")
+        pass
+
+
 
     elif val == None:
 
         with Session(engine) as session:
-            result = session.query(BlackListTokens).filter(BlackListTokens.token == str(request.cookies["AccessToken"])).first()
+            result = session.query(BlackListTokens).filter(BlackListTokens.token == str(request.cookies.get("AccessToken"))).first()
+            print("fetch-",result)
             if result != None:
-
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail="Token Expired")        
-
+                redisConnect.set(str(request.cookies.get("AccessToken")),'expired')
+                pass
             session.close()
 
     env: Settings = get_settings()
-    decoded_token = await DecodeToken(token= request.cookies["AccessToken"], env=env)
+    decoded_token = await DecodeToken(token= request.cookies.get("AccessToken"), env=env)
     if type(decoded_token) == jwt.exceptions.ExpiredSignatureError:
         print("Expired")
-        Insert = BlackListTokens(token= request.cookies["AccessToken"])
+        Insert = BlackListTokens(token= request.cookies.get("AccessToken"))
         with Session(engine) as session:
             session.add(Insert)
             session.commit()
@@ -42,14 +55,14 @@ async def Authenticatetoken(request: Request,response:Response):
         refreshToken = request.cookies.get("RefreshToken")
 
         if refreshToken == None:
-            # raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail="Token Expired")
-            response.delete_cookie("AccessToken")
-            response.delete_cookie("RefreshToken")
+            # # raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail="Token Expired")
+            # response.delete_cookie("AccessToken")
+            # response.delete_cookie("RefreshToken")
 
             res = RedirectResponse(url="/login")
             return res
 
-        decode_refresh_token = await DecodeToken(token=request.cookies["RefreshToken"], env=env)
+        decode_refresh_token = await DecodeToken(token=request.cookies.get("RefreshToken"), env=env)
         print(decode_refresh_token)
 
         exp_time = datetime.now(timezone.utc) + timedelta(seconds=120)
@@ -59,9 +72,13 @@ async def Authenticatetoken(request: Request,response:Response):
 
 
         accesstoken = await EncodeToken(Data=accessData,env=env)
-        response.set_cookie(key="AccessToken",value=str(accesstoken),httponly=True,expires=str(datetime.now() + timedelta(minutes=2)))
-
-        raise HTTPException(status_code=status.HTTP_201_CREATED,detail="Token Recreated")
+        jsonResponse = JSONResponse(
+            status_code=status.HTTP_201_CREATED,
+            content="Token Recreated"
+        )
+        jsonResponse.set_cookie(key="AccessToken",value=str(accesstoken),httponly=True,expires=str(datetime.now() + timedelta(minutes=2)))
+        return jsonResponse
+        
     
     elif type(decoded_token) == jwt.exceptions.InvalidTokenError:
         print("Invalid")
@@ -80,7 +97,8 @@ async def Authenticatetoken(request: Request,response:Response):
     if ratelimit == 'you are rate limited':
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS,detail="Rate Limited")
 
-
+    userId = decoded_token['userid']
+    return userId
 
 
 router = APIRouter(
@@ -95,6 +113,7 @@ async def GetMyProfile():
 
 @router.post("/logout")
 async def LogoutRoute(request:Request,response:Response):
+
 
     accesstoken = request.cookies["AccessToken"]
     refreshtoken = request.cookies["RefreshToken"]
@@ -111,3 +130,5 @@ async def LogoutRoute(request:Request,response:Response):
 
     res = RedirectResponse(url="/login")
     return res
+
+

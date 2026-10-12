@@ -23,10 +23,10 @@ async def SignupRoute(Cred:SignCred,res: Response):
 
     result = await InsertUser(Cred)
     if result == "Duplicate entry":
-        raise HTTPException(status_code=400,detail="User already exists")
+        raise HTTPException(status_code=400,detail={"userid":"","message":"User already exists"})
 
     elif result == "Database Error":
-        raise HTTPException(status_code=500,detail="Internal server error")        
+        raise HTTPException(status_code=500,detail={"userid":"","message":"Internal server error"})        
     
     else:
         raise HTTPException(status_code=201,detail=result)
@@ -37,11 +37,11 @@ async def LoginRoute(Cred:LoginCred):
     result = await GetUserDetails(Cred)
 
     if result == "Database Error":
-        raise HTTPException(status_code=500,detail="Internal server error")
+        raise HTTPException(status_code=500,detail={"userid":"","message":"Internal server error"})
     elif result == "User not found":
-        raise HTTPException(status_code=404,detail="user not found")
+        raise HTTPException(status_code=404,detail={"userid":"","message":"user not found"})
     elif result == "Incorrect Password":
-        raise HTTPException(status_code=401,detail="Incorrect Password")
+        raise HTTPException(status_code=401,detail={"userid":"","message":"Incorrect Password"})
     else:
         raise HTTPException(status_code=200,detail=result)
 
