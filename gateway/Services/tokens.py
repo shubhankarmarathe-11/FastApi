@@ -25,6 +25,20 @@ async def DecodeToken(token:str,env:Settings):
         decoded_jwt = jwt.decode(token,env.secret_key,algorithms=["HS256"])
         return decoded_jwt
     except Exception as e:
-        return e
+        print(e)
+        return e 
+
+
+
+
+async def DecodeRefreshToken(token:str,env:Settings):
+    print(token)
+    try:
+        decoded_jwt = jwt.decode(token,env.secret_key,algorithms=["HS256"])
+        return decoded_jwt
+    except Exception as e:
+        print(e)
+        return 'DecodeError'
+
 
 

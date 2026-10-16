@@ -6,7 +6,13 @@ from sqlmodel import SQLModel
 
 app = FastAPI()
 
-app.add_middleware(CORSMiddleware,allow_origins="*",allow_methods=["GET","POST","PUT","DELETE"],allow_credentials=True,allow_headers="*")
+app.add_middleware(CORSMiddleware,
+    allow_origins=[],
+    allow_methods=[],
+    allow_credentials=False,
+    allow_headers=[]
+)
+
 
 SQLModel.metadata.create_all(engine)
 

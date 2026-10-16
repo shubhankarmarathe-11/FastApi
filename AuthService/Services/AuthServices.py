@@ -5,6 +5,7 @@ from Config.dbConnection import engine, ClientDetails
 from sqlmodel import Session,select
 from datetime import datetime
 from bcrypt import gensalt
+from uuid import UUID
 
 class SignCred(BaseModel):
     username: str
@@ -79,13 +80,15 @@ async def UpdateUser(User:SignCred):
 async def DeleteUser(UserId:str):
     try:
         with Session(engine) as session:
-            statement = select(ClientDetails).where(str(ClientDetails.id) == UserId)
-            result = session.execute(statement)
-            got_one = result.one()
+            statement = select(ClientDetails).where(ClientDetails.id == UUID(UserId))
+            result = session.exec(statement)
+            got_one = result.one_or_none()
             session.delete(got_one)
             session.commit()
+        return "Account Removed"
     except Exception as e:
         print(f"error - {e}")
         return "Database Error"
+    
 
     

@@ -26,7 +26,7 @@ def root():
 
 @app.post("/api/email")
 async def emailService(emailCred:EmailCred):
-    url = "http://127.0.0.1:8002/api/email"
+    url = "http://192.168.5.32:8002/api/email"
     async with httpx.AsyncClient() as client:
         response = await client.post(url, json={"email": emailCred.email,"html": emailCred.html,"subject": emailCred.subject,"type": emailCred.type})
     return response.json()

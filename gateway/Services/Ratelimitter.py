@@ -1,6 +1,6 @@
 from Config.redisConnection import redisConnect
 
-def AddRateLimmiter(userid:str, limit:int=10,ttl:int=60):
+def AddRateLimmiter(userid:str, limit:int=100,ttl:int=60):
     try:
         setlimit = redisConnect.hset(userid,'limit',limit)
         setttl = redisConnect.expire(userid,ttl)

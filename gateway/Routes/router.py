@@ -1,6 +1,6 @@
 from fastapi import APIRouter,Request,Depends,HTTPException,Response
 from Config.envconfig import Settings,get_settings
-from Services.tokens import DecodeToken,EncodeToken
+from Services.tokens import DecodeToken,EncodeToken,DecodeRefreshToken
 import jwt
 from starlette import status
 from Services.Ratelimitter import UpdateRateLimmiter
@@ -10,61 +10,87 @@ from Config.redisConnection import redisConnect
 from fastapi.responses import RedirectResponse,JSONResponse
 from datetime import timezone,timedelta,datetime
 import json
+import httpx
 
 userId = ""
 
 async def Authenticatetoken(request: Request,response:Response):
 
     isRefreshTokenAvailable = request.cookies.get("RefreshToken")
-    print("avail",isRefreshTokenAvailable)
 
-    if isRefreshTokenAvailable == None:
-        response.delete_cookie("AccessToken")
-        response.delete_cookie("RefreshToken")
+    if isRefreshTokenAvailable is None:
 
-        res = RedirectResponse(url="/login")
-        return res
+        response.delete_cookie(
+            key="AccessToken",
+            path="/"
+        )
+        response.delete_cookie(
+            key="RefreshToken",
+            path="/"
+        )
+
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            headers={
+                **dict(response.headers),
+            },
+            detail="Unauthorized access"
+        )
+
+
+    env: Settings = get_settings()
+    decode_refresh_token = await DecodeRefreshToken(token=request.cookies.get("RefreshToken"), env=env)
+
+    if decode_refresh_token == 'DecodeError':
+
+        response.delete_cookie(
+            key="AccessToken",
+            path="/"
+        )
+        response.delete_cookie(
+            key="RefreshToken",
+            path="/"
+        )
+        
+        
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            headers={
+                **dict(response.headers),
+            },
+            detail="Unauthorized access"
+        )
+
+    # find accesstoken in redis
     
     val = redisConnect.get(str(request.cookies.get("AccessToken")))
-    print("val - ",val)
-    if val == 'expired'.encode():
-        pass
 
-
-
-    elif val == None:
+    if val is None:
 
         with Session(engine) as session:
             result = session.query(BlackListTokens).filter(BlackListTokens.token == str(request.cookies.get("AccessToken"))).first()
-            print("fetch-",result)
             if result != None:
                 redisConnect.set(str(request.cookies.get("AccessToken")),'expired')
                 pass
             session.close()
 
-    env: Settings = get_settings()
+    if val == "expired".encode('utf-8'):
+        pass
+
+    # decode accesstoken 
+    
     decoded_token = await DecodeToken(token= request.cookies.get("AccessToken"), env=env)
+
     if type(decoded_token) == jwt.exceptions.ExpiredSignatureError:
-        print("Expired")
         Insert = BlackListTokens(token= request.cookies.get("AccessToken"))
         with Session(engine) as session:
             session.add(Insert)
             session.commit()
             session.close()
 
-        refreshToken = request.cookies.get("RefreshToken")
 
-        if refreshToken == None:
-            # # raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail="Token Expired")
-            # response.delete_cookie("AccessToken")
-            # response.delete_cookie("RefreshToken")
-
-            res = RedirectResponse(url="/login")
-            return res
 
         decode_refresh_token = await DecodeToken(token=request.cookies.get("RefreshToken"), env=env)
-        print(decode_refresh_token)
-
         exp_time = datetime.now(timezone.utc) + timedelta(seconds=120)
         
         accessData = dict(exp=int(exp_time.timestamp())+120,userid=decode_refresh_token['userid'],role="customer",type="access")
@@ -72,16 +98,26 @@ async def Authenticatetoken(request: Request,response:Response):
 
 
         accesstoken = await EncodeToken(Data=accessData,env=env)
-        jsonResponse = JSONResponse(
-            status_code=status.HTTP_201_CREATED,
-            content="Token Recreated"
+        
+        response.set_cookie(
+            key="AccessToken",
+            value=str(accesstoken),
+            httponly=True,
+            secure= False if env.environment == "development" else True,
+            samesite="lax" if env.environment == "development" else "lax",
+            partitioned=False,
+            expires=str(datetime.now() + timedelta(minutes=20))
         )
-        jsonResponse.set_cookie(key="AccessToken",value=str(accesstoken),httponly=True,expires=str(datetime.now() + timedelta(minutes=2)))
-        return jsonResponse
+
+        raise HTTPException(
+            status_code=status.HTTP_201_CREATED,
+            headers={
+                **dict(response.headers),
+            }
+        )   
         
     
     elif type(decoded_token) == jwt.exceptions.InvalidTokenError:
-        print("Invalid")
 
         Insert = BlackListTokens(token=request.cookies["AccessToken"])
         with Session(engine) as session:
@@ -99,6 +135,10 @@ async def Authenticatetoken(request: Request,response:Response):
 
     userId = decoded_token['userid']
     return userId
+
+
+
+
 
 
 router = APIRouter(
@@ -125,10 +165,51 @@ async def LogoutRoute(request:Request,response:Response):
         session.close()
 
     redisConnect.set(str(request.cookies["AccessToken"]),'expired')
-    response.delete_cookie("AccessToken")
-    response.delete_cookie("RefreshToken")
+    res = JSONResponse(
+        status_code=200,
+        content="logout successful"
+    )
+    res.delete_cookie("AccessToken")
+    res.delete_cookie("RefreshToken")
+    
+    return res  
 
-    res = RedirectResponse(url="/login")
-    return res
+@router.delete("/accountdelete")
+async def AccountDelete(request:Request):
 
+    
+    env:Settings = get_settings()
 
+    decode_refresh_token = await DecodeRefreshToken(token=request.cookies.get("RefreshToken"), env=env)
+    print("delete -",decode_refresh_token['userid'])
+
+    async with httpx.AsyncClient() as client:
+        response = await client.delete(url=f"{env.authurl}/accountdelete",params={"userId":decode_refresh_token['userid']},headers={
+            "x-internal-secret":env.internal_token
+        })
+
+        if response.status_code == status.HTTP_202_ACCEPTED:
+
+            accesstoken = request.cookies["AccessToken"]
+            refreshtoken = request.cookies["RefreshToken"]
+            Insertfirst = BlackListTokens(token=accesstoken)
+            Insertsecond = BlackListTokens(token=refreshtoken)
+            with Session(engine) as session:
+                session.add_all([Insertfirst,Insertsecond])
+                session.commit()
+                session.close()
+            
+            redisConnect.set(str(request.cookies["AccessToken"]),'expired')
+            res = JSONResponse(
+                status_code=202,
+                content="Account Removed"
+            )
+            res.delete_cookie("AccessToken")
+            res.delete_cookie("RefreshToken")
+
+            return res
+        print(response)
+        return JSONResponse(
+            status_code=response.status_code,
+            content=response.json()['detail']['message']
+        )
