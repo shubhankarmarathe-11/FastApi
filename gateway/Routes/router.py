@@ -190,6 +190,9 @@ async def AccountDelete(request:Request):
 
         if response.status_code == status.HTTP_202_ACCEPTED:
 
+            publishRecord = redisConnect.publish("deleteRecord",str(decode_refresh_token['userid']))
+            print("Subscribers receiving message:", publishRecord)
+
             accesstoken = request.cookies["AccessToken"]
             refreshtoken = request.cookies["RefreshToken"]
             Insertfirst = BlackListTokens(token=accesstoken)

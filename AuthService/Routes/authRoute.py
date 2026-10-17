@@ -5,7 +5,7 @@ from Services.AuthServices import InsertUser,GetUserDetails,DeleteUser
 from datetime import datetime
 from Config.envConfig import Settings,get_settings
 from starlette import status
-
+from Config.redisConnection import redisConnect
 
 
 async def VerifyInternalHeader(req:Request,res:Response):
@@ -72,6 +72,8 @@ async def LoginRoute(Cred:LoginCred):
 
 @authroute.delete("/accountdelete")
 async def AccountDelete(userId:str):
+
+
     result = await DeleteUser(UserId=userId)
     if result == "Database Error":
         raise HTTPException(status_code=500,detail={"message":"Internal server error"})
