@@ -8,6 +8,10 @@ import json
 from Services.Ratelimitter import AddRateLimmiter
 from Services.tokens import EncodeToken
 from starlette import status
+# from google.oauth2 import id_token
+# from google.auth.transport import Request
+
+
 
 class UserCred(BaseModel):
     username: str = Field(default="")
@@ -15,7 +19,6 @@ class UserCred(BaseModel):
     password: str = Field(min_length=8,max_length=16)
     sub: str = Field(default="")
     picture: str = Field(default="")
-
 
 
 authrouter = APIRouter(
@@ -152,3 +155,23 @@ async def SignupRoute(res:Response,userCred:UserCred,env:Settings = Depends(get_
 
 
 
+@authrouter.post("/update_password")
+async def UpdatePasswordFun(userCred:UserCred,env:Settings = Depends(get_settings)):
+    url = env.authurl
+    print(UserCred)
+    async with httpx.AsyncClient() as client:
+        response = await client.post(f"{url}/update_password",json={"email": userCred.email, "password": userCred.password},headers={
+            "x-internal-secret":env.internal_token
+        })
+
+    return JSONResponse(
+        status_code=response.status_code,
+        content=response.json()['detail']
+    )
+    
+
+# @authrouter.post("/login/google")
+# async def GoogleAuth(google_token:str,response:Response,request:Request,env:Settings = Depends(get_settings)):
+#     GOOGLE_CLIENT_ID = env.google_client_id
+
+    

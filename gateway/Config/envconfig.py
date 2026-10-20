@@ -8,9 +8,12 @@ class Settings(BaseSettings):
     shorturl:str
     environment:str
     internal_token:str
+    google_client_id:str
+
     # Instruct Pydantic to read from the .env file
     model_config = SettingsConfigDict(env_file=".env")
 
 @lru_cache()
 def get_settings():
     return Settings()
+

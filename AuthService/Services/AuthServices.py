@@ -18,6 +18,22 @@ class LoginCred(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8,max_length=16)
 
+
+
+async def VerifyIsUser(email:str):
+    try:
+        with Session(engine) as session:
+            result = session.query(ClientDetails).filter(ClientDetails.email == email).first()
+            if(result == None):
+                return "User not found"
+            session.close()
+
+        return "User found"
+
+    except Exception as e:
+        print(f"error - {e}")
+        return "Database Error"
+
 async def InsertUser(User:SignCred):
 
     password_bytes = User.password.encode('utf-8')
@@ -62,7 +78,7 @@ async def UpdateUser(User:SignCred):
 
         with Session(engine) as session:
             statement = select(ClientDetails).where(ClientDetails.email == User.email)
-            result = session.execute(statement)
+            result = session.exec(statement)
             got_one = result.one()
 
             got_one.username = User.username
@@ -72,6 +88,27 @@ async def UpdateUser(User:SignCred):
             session.add(got_one)
             session.commit()
             session.refresh(got_one)
+
+    except Exception as e:
+        print(f"error - {e}")
+        return "Database Error"
+
+async def UpdatePassword(User:LoginCred):
+    try:
+        password_bytes = User.password.encode('utf-8')
+        hashed_password = bcrypt.hashpw(password_bytes, gensalt())
+
+        with Session(engine) as session:
+            statement = select(ClientDetails).where(ClientDetails.email == User.email)
+            result = session.exec(statement)
+            got_one = result.one()
+            got_one.password = hashed_password
+
+            session.add(got_one)
+            session.commit()
+            session.refresh(got_one)
+
+        return "Password Updated"
 
     except Exception as e:
         print(f"error - {e}")

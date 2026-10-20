@@ -1,7 +1,7 @@
 from fastapi import APIRouter,HTTPException, Response,Depends,Request
 from pydantic import BaseModel,EmailStr,Field
 from pydantic_extra_types.phone_numbers import PhoneNumber
-from Services.AuthServices import InsertUser,GetUserDetails,DeleteUser
+from Services.AuthServices import InsertUser,GetUserDetails,DeleteUser,VerifyIsUser,UpdatePassword
 from datetime import datetime
 from Config.envConfig import Settings,get_settings
 from starlette import status
@@ -40,6 +40,20 @@ class LoginCred(BaseModel):
     password: str = Field(min_length=8,max_length=16)
 
 
+class is_userCred(BaseModel):
+    email: EmailStr
+
+
+@authroute.post("/is_user")
+async def is_User(IsUserCred:is_userCred):
+    result = await VerifyIsUser(email=IsUserCred.email)
+    if result == "Database Error":
+        raise HTTPException(status_code=500,detail={"message":"Internal server error"})        
+
+    elif result == "User not found":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail={"message":"not user"})
+
+    raise HTTPException(status_code=status.HTTP_200_OK,detail={"message":"is user"})
 
 
 @authroute.post("/signup")
@@ -69,6 +83,16 @@ async def LoginRoute(Cred:LoginCred):
     else:
         raise HTTPException(status_code=200,detail=result)
 
+
+@authroute.post("/update_password")
+async def UpdatePasswordfun(Cred:LoginCred):
+    result = await UpdatePassword(Cred)
+
+    if result == "Database Error":
+        raise HTTPException(status_code=500,detail={"userid":"","message":"Internal server error"})
+
+    else:
+        raise HTTPException(status_code=201,detail=result)
 
 @authroute.delete("/accountdelete")
 async def AccountDelete(userId:str):
