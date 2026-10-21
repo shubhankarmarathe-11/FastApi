@@ -54,10 +54,10 @@ async def emailService(emailCred:EmailCred):
         })
         print(response.json())
         if response.json()['detail']["message"] == "not user":
-            return response.json()
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="not user")
 
         elif response.json()['detail']["message"] == "Internal server error":
-            return response.json()
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,detail="Internal server error")
 
     
 

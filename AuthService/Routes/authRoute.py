@@ -1,7 +1,7 @@
 from fastapi import APIRouter,HTTPException, Response,Depends,Request
 from pydantic import BaseModel,EmailStr,Field
 from pydantic_extra_types.phone_numbers import PhoneNumber
-from Services.AuthServices import InsertUser,GetUserDetails,DeleteUser,VerifyIsUser,UpdatePassword
+from Services.AuthServices import InsertUser,GetUserDetails,DeleteUser,VerifyIsUser,UpdatePassword,InsertUserGoogle,GetUserDetailsGoogle
 from datetime import datetime
 from Config.envConfig import Settings,get_settings
 from starlette import status
@@ -31,7 +31,7 @@ authroute = APIRouter(
 class SignCred(BaseModel):
     username: str
     email: EmailStr
-    password: str = Field(min_length=8,max_length=16)
+    password: str = Field(default="",min_length=8,max_length=16)
     sub: str = Field(default="")
     picture: str = Field(default="")
 
@@ -42,6 +42,41 @@ class LoginCred(BaseModel):
 
 class is_userCred(BaseModel):
     email: EmailStr
+
+
+class GoogleCred(BaseModel):
+    username: str
+    email: EmailStr
+    sub: str = Field(default="")
+    picture: str = Field(default="")
+
+
+
+@authroute.post("/signup/google")
+async def SignupWithGoogle(UserCred:GoogleCred):
+    result = await InsertUserGoogle(UserCred)
+    if result == "Duplicate entry":
+        raise HTTPException(status_code=400,detail={"userid":"","message":"User already exists"})
+    
+    elif result == "Database Error":
+        raise HTTPException(status_code=500,detail={"userid":"","message":"Internal server error"})        
+        
+    else:
+        raise HTTPException(status_code=201,detail=result)
+
+@authroute.post("/login/google")
+async def SignupWithGoogle(UserCred:GoogleCred):
+    result = await GetUserDetailsGoogle(UserCred)
+    
+    if result == "Database Error":
+        raise HTTPException(status_code=500,detail={"userid":"","message":"Internal server error"})
+    elif result == "User not found":
+        raise HTTPException(status_code=404,detail={"userid":"","message":"user not found"})
+    elif result == "Incorrect Password":
+        raise HTTPException(status_code=401,detail={"userid":"","message":"Incorrect token id"})
+    else:
+        raise HTTPException(status_code=200,detail=result)
+
 
 
 @authroute.post("/is_user")
