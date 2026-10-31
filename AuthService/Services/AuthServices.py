@@ -87,6 +87,13 @@ async def GetUserDetailsGoogle(User:GoogleCred):
             if(result == None):
                 return "User not found"
 
+            if (result.sub == ''):
+                result.sub = User.sub
+                result.picture = User.picture
+
+                session.add(result)
+                session.commit()
+                session.refresh(result)
             
             if(result.sub != User.sub):
                 return "Incorrect token id"

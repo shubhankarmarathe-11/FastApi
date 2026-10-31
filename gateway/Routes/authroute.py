@@ -92,7 +92,7 @@ async def LoginRoute(res:Response,userCred:UserCred,env:Settings = Depends(get_s
         
         return JSONResponse(
             status_code=response.status_code,
-            content=response.json()['detail']['message']
+            content=response.json()['detail']['message'] if response.json()['detail']['message'] else response.json()
         )
         
 
@@ -153,7 +153,7 @@ async def SignupRoute(res:Response,userCred:UserCred,env:Settings = Depends(get_
             return jsonResponse
         return JSONResponse(
             status_code=response.status_code,
-            content=response.json()['detail']['message']
+            content=response.json()['detail']['message'] if response.json()['detail']['message'] else response.json()
         )
 
 
@@ -169,7 +169,7 @@ async def UpdatePasswordFun(userCred:UserCred,env:Settings = Depends(get_setting
 
     return JSONResponse(
         status_code=response.status_code,
-        content=response.json()['detail']
+        content=response.json()['detail'] if response.json()['detail'] else response.json()
     )
     
 
@@ -241,7 +241,7 @@ async def GoogleAuth(Cred:GoogleLogin,env:Settings = Depends(get_settings)):
             
             return JSONResponse(
                 status_code=response.status_code,
-                content=response.json()['detail']['message']
+                content=response.json()['detail']['message'] if response.json()['detail']['message'] else response.json()
             )
 
     except Exception as e:
@@ -317,7 +317,7 @@ async def GoogleAuth(Cred:GoogleLogin,response:Response,request:Request,env:Sett
                 return jsonResponse
             return JSONResponse(
                 status_code=response.status_code,
-                content=response.json()['detail']['message']
+                content=response.json()['detail']['message'] if response.json()['detail']['message'] else response.json()
             )
 
 
