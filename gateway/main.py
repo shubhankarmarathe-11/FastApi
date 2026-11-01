@@ -28,6 +28,7 @@ SQLModel.metadata.create_all(engine)
 
 
 
+
 async def OtpGenerator(length=6):
     digits = string.digits
     otp = ''.join(secrets.choice(digits) for _ in range(length))

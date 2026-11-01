@@ -27,6 +27,60 @@ class GoogleCred(BaseModel):
     picture: str = Field(default="")
 
 
+async def Is_Authenticated(userid:str):
+    try:
+        with Session(engine) as session:
+            result = session.query(ClientDetails).filter(ClientDetails.id == UUID(userid)).first()
+            if(result.emailVerified == 1 or result.emailVerified == True):
+                return "verified"
+            elif(result.emailVerified == 0 or result.emailVerified == False):
+                return "not verified"
+            session.close()
+
+
+    except Exception as e:
+        print(f"error - {e}")
+        return "Database Error"
+
+
+async def Is_Password_Added(userid:str):
+    try:
+        with Session(engine) as session:
+            result = session.query(ClientDetails).filter(ClientDetails.id == UUID(userid)).first()
+            if(result.password == ""):
+                session.close()
+                return "not added"
+            else:
+                session.close()
+                return "added"
+
+
+    except Exception as e:
+        print(f"error - {e}")
+        return "Database Error"
+
+async def Add_Account_Password(userid:str,password:str):
+    password_bytes = password.encode('utf-8')
+    hashed_password = bcrypt.hashpw(password_bytes,gensalt())
+
+    try:
+        with Session(engine) as session:
+            query = select(ClientDetails).where(ClientDetails.id == UUID(userid))
+            execute_it = session.exec(query)
+            result = execute_it.one()
+
+            result.password = hashed_password
+
+            session.add(result)
+            session.commit()
+            session.refresh(result)
+        return "Password Added"
+
+    except Exception as e:
+        print(f"error - {e}")
+        return "Database Error"
+
+
 async def VerifyIsUser(email:str):
     try:
         with Session(engine) as session:
@@ -45,7 +99,7 @@ async def InsertUser(User:SignCred):
 
     password_bytes = User.password.encode('utf-8')
     hashed_password = bcrypt.hashpw(password_bytes,gensalt())
-    Insert = ClientDetails(username=User.username,email=User.email,password=hashed_password,createdAt=datetime.now())
+    Insert = ClientDetails(username=User.username,email=User.email,password=hashed_password,createdAt=datetime.now(),emailVerified=False)
     userid = str(Insert.id)
     try:
         with Session(engine) as session:
@@ -63,7 +117,7 @@ async def InsertUser(User:SignCred):
         
 async def InsertUserGoogle(User:GoogleCred):
     
-    Insert = ClientDetails(username=User.username,email=User.email,password="",createdAt=datetime.now(),sub=User.sub,picture=User.picture)
+    Insert = ClientDetails(username=User.username,email=User.email,password="",createdAt=datetime.now(),sub=User.sub,picture=User.picture,emailVerified=False)
     userid = str(Insert.id)
     try:
         with Session(engine) as session:
@@ -151,6 +205,7 @@ async def UpdatePassword(User:LoginCred):
             result = session.exec(statement)
             got_one = result.one()
             got_one.password = hashed_password
+            got_one.emailVerified=True
 
             session.add(got_one)
             session.commit()

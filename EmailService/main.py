@@ -5,6 +5,8 @@ from pydantic import BaseModel,EmailStr
 from Config.redisConnection import redisConnect
 from Config.envConfig import Settings,get_settings 
 from utils.EmailFunction import EmailFunction
+from Config.dbConnection import engine
+from sqlmodel import SQLModel
 
 
 
@@ -27,7 +29,7 @@ async def VerifyInternalToken(request:Request):
 app = FastAPI()
 
 
-
+SQLModel.metadata.create_all(engine)
 
 
 

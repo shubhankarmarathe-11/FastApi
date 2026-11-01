@@ -1,7 +1,7 @@
 from fastapi import APIRouter,HTTPException, Response,Depends,Request
 from pydantic import BaseModel,EmailStr,Field
 from pydantic_extra_types.phone_numbers import PhoneNumber
-from Services.AuthServices import InsertUser,GetUserDetails,DeleteUser,VerifyIsUser,UpdatePassword,InsertUserGoogle,GetUserDetailsGoogle
+from Services.AuthServices import InsertUser,GetUserDetails,DeleteUser,VerifyIsUser,UpdatePassword,InsertUserGoogle,GetUserDetailsGoogle,Is_Authenticated,Is_Password_Added,Add_Account_Password
 from datetime import datetime
 from Config.envConfig import Settings,get_settings
 from starlette import status
@@ -50,6 +50,47 @@ class GoogleCred(BaseModel):
     sub: str = Field(default="")
     picture: str = Field(default="")
 
+class is_email_authenticated(BaseModel):
+    userid: str
+
+
+class AccountPasswordCred(BaseModel):
+    password: str = Field(default="",min_length=8,max_length=16)
+
+
+@authroute.get("/is_authenticated")
+async def Is_Email_Authenticated(request:Request):
+    userid = request.headers.get('userid')
+
+    result = await Is_Authenticated(userid)
+
+    if result == "not verified":
+        raise HTTPException(status_code=406,detail={"message":"not verified"})
+
+    
+    elif result == "Database Error":
+        raise HTTPException(status_code=500,detail={"message":"Internal server error"})
+
+    else:
+        raise HTTPException(status_code=200,detail={"message":"verified"})
+
+@authroute.get("/is_password_added")
+async def Is_PasswordAdded(request:Request):
+    userid = request.headers.get('userid')
+
+    print(userid)
+    
+    result = await Is_Password_Added(userid)
+    
+    if result == "not added":
+        raise HTTPException(status_code=406,detail={"message":"not added"})
+    
+        
+    elif result == "Database Error":
+        raise HTTPException(status_code=500,detail={"message":"Internal server error"})
+    
+    else:
+        raise HTTPException(status_code=200,detail={"message":"added"})
 
 
 @authroute.post("/signup/google")
@@ -128,6 +169,19 @@ async def UpdatePasswordfun(Cred:LoginCred):
 
     else:
         raise HTTPException(status_code=201,detail=result)
+
+
+@authroute.put("/add_account_password")
+async def AddAccountPassword(request:Request,Password:AccountPasswordCred):
+    userid = request.headers.get('userid')
+    
+    result = await Add_Account_Password(userid,str(Password.password))
+
+    if result == "Database Error":
+        raise HTTPException(status_code=500,detail={"userid":"","message":"Internal server error"})
+    
+    else:
+        raise HTTPException(status_code=201,detail={"userid":"","message":"Password Added"})
 
 @authroute.delete("/accountdelete")
 async def AccountDelete(userId:str):

@@ -11,6 +11,7 @@ from fastapi.responses import RedirectResponse,JSONResponse
 from datetime import timezone,timedelta,datetime
 import json
 import httpx
+from pydantic import BaseModel,Field
 
 userId = ""
 
@@ -147,9 +148,47 @@ router = APIRouter(
     dependencies=[Depends(Authenticatetoken)],
 )
 
-@router.get("/me")
-async def GetMyProfile():
-    return {"user":"admin"}
+class AccountPasswordCred(BaseModel):
+    password:str = Field(default="",min_length=8,max_length=16)
+
+
+@router.get("/is_authenticated")
+async def IsAuthenticated(request:Request):
+    env:Settings = get_settings()
+    
+    decode_refresh_token = await DecodeRefreshToken(token=request.cookies.get("RefreshToken"), env=env)
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url=f"{env.authurl}/is_authenticated",headers={
+            "x-internal-secret":env.internal_token,
+            "userid":str(decode_refresh_token['userid'])
+        })
+
+
+
+        return JSONResponse(
+            status_code=response.status_code,
+            content=response.json()['detail']['message']
+        )
+
+@router.get("/is_password_added")
+async def IsPasswordAdded(request:Request):
+    env:Settings = get_settings()
+    
+    decode_refresh_token = await DecodeRefreshToken(token=request.cookies.get("RefreshToken"), env=env)
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url=f"{env.authurl}/is_password_added",headers={
+            "x-internal-secret":env.internal_token,
+            "userid":str(decode_refresh_token['userid'])
+        })
+        print(response.json())
+        return JSONResponse(
+            status_code=response.status_code,
+            content=response.json()['detail']['message']
+        )
+
+
 
 
 @router.post("/logout")
@@ -174,6 +213,29 @@ async def LogoutRoute(request:Request,response:Response):
     res.delete_cookie("RefreshToken")
     
     return res  
+
+
+@router.put("/add_account_password")
+async def Add_Account_Password(request:Request,Password:AccountPasswordCred):
+    env:Settings = get_settings()
+
+    decode_refresh_token = await DecodeRefreshToken(token=request.cookies.get("RefreshToken"), env=env)
+    print("delete -",decode_refresh_token['userid'])
+
+    async with httpx.AsyncClient() as client:
+        response = await client.put(url=f"{env.authurl}/add_account_password",json={"password":str(Password.password)},headers={
+            "x-internal-secret":env.internal_token,
+            "userid":decode_refresh_token['userid']
+        })
+
+        print(response.json())
+
+        return JSONResponse(
+            status_code=response.status_code,
+            content=response.json()['detail']['message']
+        )
+
+
 
 @router.delete("/accountdelete")
 async def AccountDelete(request:Request):
