@@ -1,7 +1,7 @@
 from fastapi import APIRouter,HTTPException, Response,Depends,Request
 from pydantic import BaseModel,EmailStr,Field
 from pydantic_extra_types.phone_numbers import PhoneNumber
-from Services.AuthServices import InsertUser,GetUserDetails,DeleteUser,VerifyIsUser,UpdatePassword,InsertUserGoogle,GetUserDetailsGoogle,Is_Authenticated,Is_Password_Added,Add_Account_Password
+from Services.AuthServices import InsertUser,GetUserDetails,DeleteUser,VerifyIsUser,UpdatePassword,InsertUserGoogle,GetUserDetailsGoogle,Is_Authenticated,Is_Password_Added,Add_Account_Password,Update_Email_Status
 from datetime import datetime
 from Config.envConfig import Settings,get_settings
 from starlette import status
@@ -123,13 +123,13 @@ async def SignupWithGoogle(UserCred:GoogleCred):
 @authroute.post("/is_user")
 async def is_User(IsUserCred:is_userCred):
     result = await VerifyIsUser(email=IsUserCred.email)
-    if result == "Database Error":
-        raise HTTPException(status_code=500,detail={"message":"Internal server error"})        
+    if result['message'] == "Database Error":
+        raise HTTPException(status_code=500,detail={"userid":"","message":"Internal server error"})        
 
-    elif result == "User not found":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail={"message":"not user"})
+    elif result['message'] == "User not found":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail={"userid":"","message":"not user"})
 
-    raise HTTPException(status_code=status.HTTP_200_OK,detail={"message":"is user"})
+    raise HTTPException(status_code=status.HTTP_200_OK,detail={"userid":result["userid"],"message":"is user"})
 
 
 @authroute.post("/signup")
@@ -182,6 +182,18 @@ async def AddAccountPassword(request:Request,Password:AccountPasswordCred):
     
     else:
         raise HTTPException(status_code=201,detail={"userid":"","message":"Password Added"})
+
+@authroute.put("/update_verify_status")
+async def UpdateEmailStatus(request:Request):
+    userid = request.headers.get('userid')
+    
+    result = await Update_Email_Status(userid=userid)
+
+    if result == "Database Error":
+        raise HTTPException(status_code=500,detail={"userid":"","message":"Internal server error"})
+    
+    else:
+        raise HTTPException(status_code=201,detail={"userid":"","message":"Status Updated"})
 
 @authroute.delete("/accountdelete")
 async def AccountDelete(userId:str):

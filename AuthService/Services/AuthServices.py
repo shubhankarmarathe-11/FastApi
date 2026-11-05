@@ -80,20 +80,45 @@ async def Add_Account_Password(userid:str,password:str):
         print(f"error - {e}")
         return "Database Error"
 
+async def Update_Email_Status(userid:str):
 
-async def VerifyIsUser(email:str):
     try:
         with Session(engine) as session:
-            result = session.query(ClientDetails).filter(ClientDetails.email == email).first()
-            if(result == None):
-                return "User not found"
-            session.close()
+            query = select(ClientDetails).where(ClientDetails.id == UUID(userid))
+            execute_it = session.exec(query)
+            result = execute_it.one()
 
-        return "User found"
+            result.emailVerified = True
+
+            session.add(result)
+            session.commit()
+            session.refresh(result)
+        return "Status Updated"
 
     except Exception as e:
         print(f"error - {e}")
         return "Database Error"
+
+
+async def VerifyIsUser(email:str):
+    try:
+        with Session(engine) as session:
+            query = select(ClientDetails).where(ClientDetails.email == email)
+
+            execute_query = session.exec(query)
+
+            result = execute_query.first()
+
+            if(result == None):
+                return {"userid":"","message":"User not found"}
+            session.close()
+
+        # return "User found"
+        return {"userid":str(result.id),"message":"User found"}
+
+    except Exception as e:
+        print(f"error - {e}")
+        return {"userid":"","message":"Database Error"}
 
 async def InsertUser(User:SignCred):
 

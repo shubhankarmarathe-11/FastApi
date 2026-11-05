@@ -11,7 +11,7 @@ from fastapi.responses import RedirectResponse,JSONResponse
 from datetime import timezone,timedelta,datetime
 import json
 import httpx
-from pydantic import BaseModel,Field
+from pydantic import BaseModel,Field,EmailStr
 
 userId = ""
 
@@ -151,6 +151,10 @@ router = APIRouter(
 class AccountPasswordCred(BaseModel):
     password:str = Field(default="",min_length=8,max_length=16)
 
+class Verify_OTP(BaseModel):
+    otp:str = Field(min_length=6,max_length=6)
+    email:EmailStr
+
 
 @router.get("/is_authenticated")
 async def IsAuthenticated(request:Request):
@@ -188,6 +192,41 @@ async def IsPasswordAdded(request:Request):
             content=response.json()['detail']['message']
         )
 
+
+
+@router.post("/authenticate_email")
+async def Authenticate_OTP_To_Verify_Email(request:Request,VerifyCred:Verify_OTP):
+
+    env:Settings = get_settings()
+        
+    decode_refresh_token = await DecodeRefreshToken(token=request.cookies.get("RefreshToken"), env=env)
+
+    Get_otp = redisConnect.get(f"{VerifyCred.email}_otp")
+    print(Get_otp)
+    if (Get_otp == None):
+        raise HTTPException(status_code=401,detail="Otp Expired")
+
+    if(Get_otp.decode('utf-8') != VerifyCred.otp):
+        raise HTTPException(status_code=401,detail="Invalid Otp")
+
+    
+    async with httpx.AsyncClient() as client:
+        response = await client.put(url=f"{env.authurl}/update_verify_status",headers={
+            "x-internal-secret":env.internal_token,
+            "userid":str(decode_refresh_token['userid'])
+        })
+
+        print(response)
+
+        if (response.status_code == 500):
+            raise HTTPException(status_code=500,detail="Internal server error")
+
+        res = JSONResponse(
+            status_code=200,
+            content="correct otp"
+        )
+
+    return res
 
 
 

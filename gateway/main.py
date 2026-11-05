@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException,Request
 from starlette import status
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
@@ -10,6 +10,7 @@ from Config.envconfig import Settings,get_settings
 import secrets
 import string
 from Config.redisConnection import redisConnect
+from Services.tokens import DecodeRefreshToken
 
 class EmailCred(BaseModel):
     email: EmailStr
@@ -44,8 +45,16 @@ def root():
     raise HTTPException(status_code=status.HTTP_200_OK,detail="Hello World")
 
 @app.post("/api/email")
-async def emailService(emailCred:EmailCred):
+async def emailService(emailCred:EmailCred,request:Request):
     env:Settings = get_settings()
+
+    is_user_logged_in = request.cookies.get("RefreshToken")
+    print(is_user_logged_in)
+
+    decode_refresh_token = ""
+
+    if is_user_logged_in != None:
+        decode_refresh_token = await DecodeRefreshToken(token=is_user_logged_in,env=env)
 
     print(emailCred.email)
 
@@ -60,7 +69,10 @@ async def emailService(emailCred:EmailCred):
         elif response.json()['detail']["message"] == "Internal server error":
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,detail="Internal server error")
 
-    
+    print(decode_refresh_token)
+
+    if(decode_refresh_token != "" and decode_refresh_token['userid']!=response.json()['detail']['userid']):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="Please use logged in account email")
 
     otp = await OtpGenerator();
     edited_html = emailCred.html.replace("{{otp}}",str(otp))
