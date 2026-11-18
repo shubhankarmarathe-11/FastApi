@@ -17,8 +17,7 @@ dependencies = [
     "emails>=1.1.2",
     "pymysql>=1.2.0",
     "sqlmodel>=0.0.39",
-    
-
+    "bullmq>=3.6.2",
 ]
 
 [project.scripts]

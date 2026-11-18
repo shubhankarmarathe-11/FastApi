@@ -1,5 +1,6 @@
 from sqlmodel import create_engine,SQLModel,Field
 import uuid
+from Config.envconfig import Settings,get_settings
 
 
 class BlackListTokens(SQLModel,table=True):
@@ -8,8 +9,9 @@ class BlackListTokens(SQLModel,table=True):
 
 
 
+env:Settings = get_settings()
 
-mysql_url = "mysql+pymysql://root:Abcd1234@127.0.0.1:3306/URLSHORTNER"
+mysql_url = f"mysql+pymysql://{env.mysql_user}:{env.mysql_pass}@{env.mysql_host}/{env.mysql_db}"
 engine = create_engine(mysql_url)
 
 

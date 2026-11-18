@@ -1,6 +1,10 @@
 from redis import Redis
+from Config.envConfig import Settings,get_settings
 
-redisConnect = Redis(host='127.0.0.1',port=6379)
+
+env:Settings = get_settings()
+
+redisConnect = Redis(host=env.redis_host,port=env.redis_port)
 
 if redisConnect.ping():
     print("Redis Connected")

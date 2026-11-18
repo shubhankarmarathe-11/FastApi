@@ -18,6 +18,7 @@ dependencies = [
     "authlib>=1.9.1",
     "google-auth>=2.62.0",
     "requests>=2.34.2",
+    "bullmq>=3.6.2",
 ]
 
 [project.scripts]

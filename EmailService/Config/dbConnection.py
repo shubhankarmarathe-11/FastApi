@@ -1,5 +1,6 @@
 from sqlmodel import Field,SQLModel, create_engine
 import uuid
+from Config.envConfig import Settings,get_settings
 
 class EmailLogs(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4,primary_key=True)
@@ -11,8 +12,8 @@ class EmailLogs(SQLModel, table=True):
 
 
 
-
-mysql_url = "mysql+pymysql://root:Abcd1234@127.0.0.1:3306/URLSHORTNER"
+env:Settings = get_settings()
+mysql_url = f"mysql+pymysql://{env.mysql_user}:{env.mysql_pass}@{env.mysql_host}/{env.mysql_db}"
 engine = create_engine(mysql_url)
 
 with engine.connect() as connection:

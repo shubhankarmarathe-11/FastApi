@@ -1,5 +1,6 @@
 from sqlmodel import Field,SQLModel, create_engine
 import uuid
+from Config.envConfig import Settings,get_settings
 
 
 
@@ -15,7 +16,9 @@ class ClientDetails(SQLModel,table=True):
     createdAt: str
     emailVerified:bool = Field(default=False)
 
-mysql_url = "mysql+pymysql://root:Abcd1234@127.0.0.1:3306/URLSHORTNER"
+env:Settings = get_settings()
+
+mysql_url = f"mysql+pymysql://{env.mysql_user}:{env.mysql_pass}@{env.mysql_host}/{env.mysql_db}"
 engine = create_engine(mysql_url)
 
 
