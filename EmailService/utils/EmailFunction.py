@@ -37,3 +37,40 @@ def EmailFunction():
         InsertToDB(new_obj["email"],new_obj['clientIp'],True)
 
 
+
+
+def EmailFunctionForQueue(subject:str,html:str,email:str,type:str,client_ip:str):
+
+    env:Settings = get_settings()
+
+    new_obj = {
+        "subject":subject,
+        "html":html,
+        "type":type,
+        "email":email
+    }
+
+    message = emails.html(
+        subject=subject,
+        html=html,
+        mail_from=("fastAPi",env.email_user)
+    )
+    try:
+        response = message.send(
+            to=email,
+            smtp={
+                "host": "smtp.gmail.com",
+                "port": 587,
+                "tls": True,
+                "user": env.email_user,
+                "password":env.email_pass
+            }
+        )
+
+        if response.status_code == 250:
+            InsertToDB(new_obj,client_ip,False)
+            return "done"
+    except Exception as e:
+        print(f"error - {e}")
+        InsertToDB(new_obj,client_ip,True)
+        return "error"

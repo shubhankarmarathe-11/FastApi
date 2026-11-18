@@ -11,6 +11,7 @@ import secrets
 import string
 from Config.redisConnection import redisConnect
 from Services.tokens import DecodeRefreshToken
+from bullmq import Queue
 
 class EmailCred(BaseModel):
     email: EmailStr
@@ -26,7 +27,8 @@ app = FastAPI()
 
 SQLModel.metadata.create_all(engine)
 
-
+# Create Queue
+email_queue = Queue("Client_Emails")
 
 
 
@@ -34,7 +36,6 @@ async def OtpGenerator(length=6):
     digits = string.digits
     otp = ''.join(secrets.choice(digits) for _ in range(length))
     return otp
-
 
 
 
@@ -47,6 +48,8 @@ def root():
 @app.post("/api/email")
 async def emailService(emailCred:EmailCred,request:Request):
     env:Settings = get_settings()
+
+    client_ip = request.client.host
 
     is_user_logged_in = request.cookies.get("RefreshToken")
     print(is_user_logged_in)
@@ -80,12 +83,45 @@ async def emailService(emailCred:EmailCred,request:Request):
     redisConnect.set(f"{emailCred.email}_otp",f"{otp}")
     redisConnect.expire(f"{emailCred.email}_otp",60)
 
-    url = "http://192.168.5.32:8002/api/email"
-    async with httpx.AsyncClient() as client:
-        response = await client.post(url, json={"email": emailCred.email,"html":edited_html,"subject": emailCred.subject,"type": emailCred.type},headers={
-            "x-internal-secret": env.internal_token 
-        })
-    return response.json()
+    # url = "http://192.168.5.32:8002/api/email"
+    # async with httpx.AsyncClient() as client:
+    #     response = await client.post(url, json={"email": emailCred.email,"html":edited_html,"subject": emailCred.subject,"type": emailCred.type},headers={
+    #         "x-internal-secret": env.internal_token 
+    #     })
+
+    try:
+        job = await email_queue.add(
+            "emails",
+            {
+                "email": str(emailCred.email),
+                "html": edited_html,
+                "subject": emailCred.subject,
+                "type": emailCred.type,
+                "client_ip": client_ip
+            },
+            {
+                "attempts": 3,
+                "backoff": {
+                    "type": "exponential",
+                    "delay": 2000
+                },
+                "removeOnComplete": True,
+                "removeOnFail":False
+            }
+        )
+
+
+        return "The email queued And will be sent shortly."
+
+    except Exception as e:
+        print(e)
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to queue email"
+        )
+
+
+
 
 
 
