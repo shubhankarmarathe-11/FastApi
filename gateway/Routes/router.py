@@ -12,6 +12,7 @@ from datetime import timezone,timedelta,datetime
 import json
 import httpx
 from pydantic import BaseModel,Field,EmailStr
+from bullmq import Queue
 
 userId = ""
 
@@ -140,6 +141,7 @@ async def Authenticatetoken(request: Request,response:Response):
 
 
 
+delete_account_data_queue = Queue("delete_account_data")
 
 
 
@@ -292,8 +294,24 @@ async def AccountDelete(request:Request):
 
         if response.status_code == status.HTTP_202_ACCEPTED:
 
-            publishRecord = redisConnect.publish("deleteRecord",str(decode_refresh_token['userid']))
-            print("Subscribers receiving message:", publishRecord)
+            # publishRecord = redisConnect.publish("deleteRecord",str(decode_refresh_token['userid']))
+            # print("Subscribers receiving message:", publishRecord)
+
+            job = await delete_account_data_queue.add(
+                        "emails",
+                        {
+                            "userId": str(decode_refresh_token['userid']),
+                        },
+                        {
+                            "attempts": 3,
+                            "backoff": {
+                                "type": "exponential",
+                                "delay": 2000
+                            },
+                            "removeOnComplete": True,
+                            "removeOnFail":False
+                        }
+                    )
 
             accesstoken = request.cookies["AccessToken"]
             refreshtoken = request.cookies["RefreshToken"]
